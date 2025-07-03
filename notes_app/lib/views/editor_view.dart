@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart' as flutter_provider;
-
-import '../models/note.dart';
 import '../viewmodels/note_viewmodel.dart';
+import '../models/note.dart';
 import '../utils/markdown_export.dart';
 
 class EditorView extends StatefulWidget {
@@ -71,6 +70,11 @@ class _EditorViewState extends State<EditorView> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.note != null;
+    final allTags = flutter_provider.Provider.of<NoteViewModel>(context).notes
+        .expand((n) => n.tags)
+        .toSet()
+        .where((t) => t.isNotEmpty)
+        .toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -117,6 +121,22 @@ class _EditorViewState extends State<EditorView> {
               decoration: const InputDecoration(labelText: 'Tags (séparés par des virgules)'),
             ),
           ),
+          if (allTags.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Wrap(
+                spacing: 8,
+                children: allTags.map((tag) => ActionChip(
+                  label: Text(tag),
+                  onPressed: () {
+                    final tags = tagsCtrl.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toSet();
+                    tags.add(tag);
+                    tagsCtrl.text = tags.join(', ');
+                    setState(() {});
+                  },
+                )).toList(),
+              ),
+            ),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(8),

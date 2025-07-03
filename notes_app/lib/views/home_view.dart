@@ -15,23 +15,59 @@ class HomeView extends StatefulWidget {
 }
 
 class _HomeViewState extends State<HomeView> {
+  String? selectedTag;
+  String sortMode = 'date';
+
   @override
   void initState() {
     super.initState();
     Future.microtask(() {
       final viewModel = flutter_provider.Provider.of<NoteViewModel>(context, listen: false);
-      viewModel.loadNotes(); // ← on charge les notes au démarrage
+      viewModel.loadNotes();
     });
+  }
+
+  List<Note> _getSortedNotes(NoteViewModel viewModel) {
+    List<Note> filtered = selectedTag == null || selectedTag == 'Tous'
+        ? viewModel.notes
+        : viewModel.getNotesByTag(selectedTag!);
+    if (sortMode == 'alpha') {
+      filtered = [...filtered]
+        ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+    }
+    return filtered;
   }
 
   @override
   Widget build(BuildContext context) {
     final viewModel = flutter_provider.Provider.of<NoteViewModel>(context);
+    final allTags = <String>{'Tous'};
+    for (final note in viewModel.notes) {
+      allTags.addAll(note.tags.where((t) => t.isNotEmpty));
+    }
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mes notes'),
         actions: [
+          DropdownButton<String>(
+            value: selectedTag ?? 'Tous',
+            items: allTags.map((tag) => DropdownMenuItem(value: tag, child: Text(tag))).toList(),
+            onChanged: (val) => setState(() => selectedTag = val),
+            underline: Container(),
+            icon: const Icon(Icons.label),
+          ),
+          const SizedBox(width: 16),
+          DropdownButton<String>(
+            value: sortMode,
+            items: const [
+              DropdownMenuItem(value: 'date', child: Text('Date')),
+              DropdownMenuItem(value: 'alpha', child: Text('A-Z')),
+            ],
+            onChanged: (val) => setState(() => sortMode = val!),
+            underline: Container(),
+            icon: const Icon(Icons.sort_by_alpha),
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Déconnexion',
@@ -57,12 +93,12 @@ class _HomeViewState extends State<HomeView> {
         ),
         child: const Icon(Icons.add),
       ),
-      body: viewModel.notes.isEmpty
+      body: _getSortedNotes(viewModel).isEmpty
           ? const Center(child: Text("Aucune note pour l'instant."))
           : ListView.builder(
-              itemCount: viewModel.notes.length,
+              itemCount: _getSortedNotes(viewModel).length,
               itemBuilder: (context, index) {
-                Note note = viewModel.notes[index];
+                Note note = _getSortedNotes(viewModel)[index];
                 return NoteCard(note: note);
               },
             ),
